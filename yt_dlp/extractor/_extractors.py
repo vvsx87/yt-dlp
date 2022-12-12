@@ -970,6 +970,7 @@ from .markiza import (
 from .massengeschmacktv import MassengeschmackTVIE
 from .masters import MastersIE
 from .matchtv import MatchTVIE
+from .kika import KikaIE
 from .mdr import MDRIE
 from .medaltv import MedalTVIE
 from .mediaite import MediaiteIE
