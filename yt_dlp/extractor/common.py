@@ -45,6 +45,7 @@ from ..utils import (
     deprecation_warning,
     determine_ext,
     dict_get,
+    get_referrer_url,
     encode_data_uri,
     error_to_compat_str,
     extract_attributes,
@@ -3041,6 +3042,7 @@ class InfoExtractor:
             return is_plain_url, formats
 
         entries = []
+        referrer_policy = self._html_search_meta('referrer', webpage) or 'strict-origin-when-cross-origin'
         # amp-video and amp-audio are very similar to their HTML5 counterparts
         # so we will include them right here (see
         # https://www.ampproject.org/docs/reference/components/amp-video)
@@ -3123,7 +3125,9 @@ class InfoExtractor:
                             'url': absolute_url(src),
                         })
             for f in media_info['formats']:
-                f.setdefault('http_headers', {})['Referer'] = base_url
+                referrer = get_referrer_url(base_url, f['url'], referrer_policy)
+                if referrer:
+                    f.setdefault('http_headers', {})['Referer'] = referrer
             if media_info['formats'] or media_info['subtitles']:
                 entries.append(media_info)
         return entries
