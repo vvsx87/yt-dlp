@@ -989,6 +989,7 @@ from .lnkgo import (
     LnkGoIE,
     LnkIE,
 )
+from .logotv import LogoTVIE
 from .lovehomeporn import LoveHomePornIE
 from .lrt import (
     LRTVODIE,
@@ -1786,6 +1787,7 @@ from .sky import (
 from .slideshare import SlideshareIE
 from .slideslive import SlidesLiveIE
 from .slutload import SlutloadIE
+from .smithsonianchannel import SmithsonianChannelIE
 from .smotrim import SmotrimIE
 from .snotr import SnotrIE
 from .sohu import (

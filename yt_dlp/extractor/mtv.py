@@ -1,4 +1,5 @@
 import re
+import random
 import xml.etree.ElementTree
 
 from .common import InfoExtractor
@@ -128,26 +129,6 @@ class MTVServicesInfoExtractor(InfoExtractor):
         video_id = self._id_from_uri(uri)
         self.report_extraction(video_id)
         content_el = itemdoc.find('%s/%s' % (_media_xml_tag('group'), _media_xml_tag('content')))
-        mediagen_url = self._remove_template_parameter(content_el.attrib['url'])
-        mediagen_url = mediagen_url.replace('device={device}', '')
-        if 'acceptMethods' not in mediagen_url:
-            mediagen_url += '&' if '?' in mediagen_url else '?'
-            mediagen_url += 'acceptMethods='
-            mediagen_url += 'hls' if use_hls else 'fms'
-
-        mediagen_doc = self._download_xml(
-            mediagen_url, video_id, 'Downloading video urls', fatal=False)
-
-        if not isinstance(mediagen_doc, xml.etree.ElementTree.Element):
-            return None
-
-        item = mediagen_doc.find('./video/item')
-        if item is not None and item.get('type') == 'text':
-            message = '%s returned error: ' % self.IE_NAME
-            if item.get('code') is not None:
-                message += '%s - ' % item.get('code')
-            message += item.text
-            raise ExtractorError(message, expected=True)
 
         description = strip_or_none(xpath_text(itemdoc, 'description'))
 
@@ -193,7 +174,38 @@ class MTVServicesInfoExtractor(InfoExtractor):
         if mtvn_id_node is not None:
             mtvn_id = mtvn_id_node.text
 
-        formats = self._extract_video_formats(mediagen_doc, mtvn_id, video_id)
+        # Some CDNs are missing/inaccessible, mutating the URL parameters we can usually
+        # get a different (working) CDN
+        attempts = 0
+        formats = False
+        while not formats and attempts < 3:
+            mediagen_url = self._remove_template_parameter(content_el.attrib['url'])
+
+            if 'acceptMethods' not in mediagen_url:
+                mediagen_url += '&' if '?' in mediagen_url else '?'
+                mediagen_url += 'acceptMethods='
+                mediagen_url += 'hls' if use_hls else 'fms'
+
+            if attempts > 0:
+                mediagen_url += '&nonce=' + ''.join(random.choices('0123456789abcdef', k=16))
+
+            self.write_debug(mediagen_url)
+            mediagen_doc = self._download_xml(
+                mediagen_url, video_id, 'Downloading video urls', fatal=False)
+
+            if not isinstance(mediagen_doc, xml.etree.ElementTree.Element):
+                return None
+
+            item = mediagen_doc.find('./video/item')
+            if item is not None and item.get('type') == 'text':
+                message = '%s returned error: ' % self.IE_NAME
+                if item.get('code') is not None:
+                    message += '%s - ' % item.get('code')
+                message += item.text
+                raise ExtractorError(message, expected=True)
+
+            formats = self._extract_video_formats(mediagen_doc, mtvn_id, video_id)
+            attempts += 1
 
         # Some parts of complete video may be missing (e.g. missing Act 3 in
         # http://www.southpark.de/alle-episoden/s14e01-sexual-healing)
@@ -305,7 +317,8 @@ class MTVServicesInfoExtractor(InfoExtractor):
             if video_player:
                 mgid = try_get(video_player, lambda x: x['props']['media']['video']['config']['uri'])
             else:
-                flex_wrapper = self._extract_child_with_type(ab_testing or main_container, 'FlexWrapper')
+                avia_wrapper = self._extract_child_with_type(ab_testing or main_container, 'AviaWrapper')
+                flex_wrapper = self._extract_child_with_type(avia_wrapper or ab_testing or main_container, 'FlexWrapper')
                 auth_suite_wrapper = self._extract_child_with_type(flex_wrapper, 'AuthSuiteWrapper')
                 player = self._extract_child_with_type(auth_suite_wrapper or flex_wrapper, 'Player')
                 if player:
@@ -357,8 +370,8 @@ class MTVServicesEmbeddedIE(MTVServicesInfoExtractor):
 
 class MTVIE(MTVServicesInfoExtractor):
     IE_NAME = 'mtv'
-    _VALID_URL = r'https?://(?:www\.)?mtv\.com/(?:video-clips|(?:full-)?episodes)/(?P<id>[^/?#.]+)'
-    _FEED_URL = 'http://www.mtv.com/feeds/mrss/'
+    _VALID_URL = r'https?://(?:www\.)?mtv\.com/(?:vma/)?(?:video-clips|video-playlists|(?:full-)?episodes|movies)/(?P<id>[^/?#.]+)'
+    _FEED_URL = 'http://feeds.mtvnservices.com/od/feed/intl-mrss-player-feed'
 
     _TESTS = [{
         'url': 'http://www.mtv.com/video-clips/vl8qof/unlocking-the-truth-trailer',
@@ -378,6 +391,12 @@ class MTVIE(MTVServicesInfoExtractor):
         'url': 'http://www.mtv.com/episodes/g8xu7q/teen-mom-2-breaking-the-wall-season-7-ep-713',
         'only_matching': True,
     }]
+
+    def _get_feed_query(self, uri):
+        return {
+            'arcEp': 'mtv.com',
+            'mgid': uri,
+        }
 
 
 class MTVJapanIE(MTVServicesInfoExtractor):
@@ -504,6 +523,12 @@ class MTVDEIE(MTVServicesInfoExtractor):
             'mgid': uri,
         }
 
+    def _extract_mgid(self, webpage):
+        mgid = super()._extract_mgid(webpage)
+        # if accessing outside of geo-restrictions, mgid will contain invalid mtv.intl domain instead of correct mtv.de domain
+        if mgid:
+            return mgid.replace('mtv.intl', 'mtv.de')
+
 
 class MTVItaliaIE(MTVServicesInfoExtractor):
     IE_NAME = 'mtv.it'
@@ -531,6 +556,12 @@ class MTVItaliaIE(MTVServicesInfoExtractor):
             'arcEp': 'mtv.it',
             'mgid': uri,
         }
+
+    def _extract_mgid(self, webpage):
+        mgid = super()._extract_mgid(webpage)
+        # if accessing outside of geo-restrictions, mgid will contain invalid mtv.intl domain instead of correct mtv.it domain
+        if mgid:
+            return mgid.replace('mtv.intl', 'mtv.it')
 
 
 class MTVItaliaProgrammaIE(MTVItaliaIE):  # XXX: Do not subclass from concrete IE
