@@ -571,17 +571,18 @@ class ORFONIE(InfoExtractor):
     IE_NAME = 'orf:on'
     _VALID_URL = r'https?://on\.orf\.at/video/(?P<id>\d+)(/(?P<slug>[\w-]+))?'
     _TESTS = [{
-        'url': 'https://on.orf.at/video/14210000/school-of-champions-48',
+        'url': 'https://on.orf.at/video/3220355',
+        'md5': 'f94d98e667cf9a3851317efb4e136662',
         'info_dict': {
-            'id': '14210000',
+            'id': '3220355',
             'ext': 'mp4',
-            'duration': 2651.08,
-            'thumbnail': 'https://api-tvthek.orf.at/assets/segments/0167/98/thumb_16697671_segments_highlight_teaser.jpeg',
-            'title': 'School of Champions (4/8)',
-            'description': 'md5:d09ad279fc2e8502611e7648484b6afd',
+            'duration': 445.04,
+            'thumbnail': 'https://api-tvthek.orf.at/assets/segments/0002/60/thumb_159573_segments_highlight_teaser.png',
+            'title': '50 Jahre Burgenland: Der Festumzug',
+            'description': 'md5:1560bf855119544ee8c4fa5376a2a6b0',
             'media_type': 'episode',
-            'timestamp': 1706472362,
-            'upload_date': '20240128',
+            'timestamp': 52916400,
+            'upload_date': '19710905',
         }
     }]
 
