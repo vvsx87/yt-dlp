@@ -620,10 +620,20 @@ class ORFONIE(InfoExtractor):
                 ],
             }, target=subtitles)
 
+        age_classification = traverse_obj(api_json, ('age_classification'), {str})
+        age_limit = None
+        if isinstance(age_classification, str) and len(age_classification) != 0:
+            # age_classification is in the format `<age:int>+`
+            # example: "6+" or "18+"
+            age_limit_str = age_classification[:-1]
+            if age_limit_str.isdigit():
+                age_limit = int(age_limit_str)
+
         return {
             'id': video_id,
             'formats': formats,
             'subtitles': subtitles,
+            'age_limit': age_limit,
             **traverse_obj(api_json, {
                 'duration': ('duration_second', {float_or_none}),
                 'title': (('title', 'headline'), {str}),
