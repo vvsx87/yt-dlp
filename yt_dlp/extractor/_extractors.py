@@ -1334,6 +1334,7 @@ from .nrk import (
     NRKTVSeriesIE,
 )
 from .nrl import NRLTVIE
+from .nts import NTSLiveIE
 from .ntvcojp import NTVCoJpCUIE
 from .ntvde import NTVDeIE
 from .ntvru import NTVRuIE
