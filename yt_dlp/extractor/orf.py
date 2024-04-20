@@ -569,19 +569,20 @@ class ORFFM4StoryIE(InfoExtractor):
 
 class ORFONIE(InfoExtractor):
     IE_NAME = 'orf:on'
-    _VALID_URL = r'https?://on\.orf\.at/video/(?P<id>\d{8})/(?P<slug>[\w-]+)'
+    _VALID_URL = r'https?://on\.orf\.at/video/(?P<id>\d+)(/(?P<slug>[\w-]+))?'
     _TESTS = [{
-        'url': 'https://on.orf.at/video/14210000/school-of-champions-48',
+        'url': 'https://on.orf.at/video/3220355',
+        'md5': 'f94d98e667cf9a3851317efb4e136662',
         'info_dict': {
-            'id': '14210000',
+            'id': '3220355',
             'ext': 'mp4',
-            'duration': 2651.08,
-            'thumbnail': 'https://api-tvthek.orf.at/assets/segments/0167/98/thumb_16697671_segments_highlight_teaser.jpeg',
-            'title': 'School of Champions (4/8)',
-            'description': 'md5:d09ad279fc2e8502611e7648484b6afd',
+            'duration': 445.04,
+            'thumbnail': 'https://api-tvthek.orf.at/assets/segments/0002/60/thumb_159573_segments_highlight_teaser.png',
+            'title': '50 Jahre Burgenland: Der Festumzug',
+            'description': 'md5:1560bf855119544ee8c4fa5376a2a6b0',
             'media_type': 'episode',
-            'timestamp': 1706472362,
-            'upload_date': '20240128',
+            'timestamp': 52916400,
+            'upload_date': '19710905',
         }
     }]
 
@@ -589,6 +590,9 @@ class ORFONIE(InfoExtractor):
         encrypted_id = base64.b64encode(f'3dSlfek03nsLKdj4Jsd{video_id}'.encode()).decode()
         api_json = self._download_json(
             f'https://api-tvthek.orf.at/api/v4.3/public/episode/encrypted/{encrypted_id}', display_id)
+
+        if traverse_obj(api_json, 'is_drm_protected'):
+            self.report_drm(video_id)
 
         formats, subtitles = [], {}
         for manifest_type in traverse_obj(api_json, ('sources', {dict.keys}, ...)):
@@ -604,10 +608,33 @@ class ORFONIE(InfoExtractor):
                 formats.extend(fmts)
                 self._merge_subtitles(subs, target=subtitles)
 
+        for subtitle_type in ['vtt']:  # not working formats 'xml', 'srt', 'sami', 'ttml', 'stl'
+            subtitle_url = traverse_obj(api_json, ('_embedded', 'subtitle', f'{subtitle_type}_url'), {str})
+            if subtitle_url is None:
+                continue
+            self._merge_subtitles({
+                'de': [
+                    {
+                        'url': subtitle_url,
+                        'ext': f'{subtitle_type}',
+                    }
+                ],
+            }, target=subtitles)
+
+        age_classification = traverse_obj(api_json, ('age_classification'), {str})
+        age_limit = None
+        if isinstance(age_classification, str) and len(age_classification) != 0:
+            # age_classification is in the format `<age:int>+`
+            # example: "6+" or "18+"
+            age_limit_str = age_classification[:-1]
+            if age_limit_str.isdigit():
+                age_limit = int(age_limit_str)
+
         return {
             'id': video_id,
             'formats': formats,
             'subtitles': subtitles,
+            'age_limit': age_limit,
             **traverse_obj(api_json, {
                 'duration': ('duration_second', {float_or_none}),
                 'title': (('title', 'headline'), {str}),
@@ -618,6 +645,8 @@ class ORFONIE(InfoExtractor):
 
     def _real_extract(self, url):
         video_id, display_id = self._match_valid_url(url).group('id', 'slug')
+        if display_id is None:
+            display_id = video_id
         webpage = self._download_webpage(url, display_id)
 
         return {
