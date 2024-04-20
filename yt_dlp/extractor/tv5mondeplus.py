@@ -2,8 +2,11 @@ import urllib.parse
 
 from .common import InfoExtractor
 from ..utils import (
+    clean_html,
     determine_ext,
     extract_attributes,
+    get_element_by_class,
+    get_element_html_by_class,
     int_or_none,
     parse_duration,
     traverse_obj,
@@ -13,74 +16,70 @@ from ..utils import (
 
 
 class TV5MondePlusIE(InfoExtractor):
-    IE_DESC = 'TV5MONDE+'
-    _VALID_URL = r'https?://(?:www\.)?(?:tv5mondeplus|revoir\.tv5monde)\.com/toutes-les-videos/[^/]+/(?P<id>[^/?#]+)'
+    IE_NAME = 'TV5MONDE'
+    _VALID_URL = r'https?://(?:www\.)?tv5monde\.com/tv/video/(?P<id>[^/?#]+)'
     _TESTS = [{
-        # movie
-        'url': 'https://revoir.tv5monde.com/toutes-les-videos/cinema/les-novices',
-        'md5': 'c86f60bf8b75436455b1b205f9745955',
+        # documentary
+        'url': 'https://www.tv5monde.com/tv/video/65931-baudouin-l-heritage-d-un-roi-baudouin-l-heritage-d-un-roi',
+        'md5': 'd2a708902d3df230a357c99701aece05',
         'info_dict': {
-            'id': 'ZX0ipMyFQq_6D4BA7b',
-            'display_id': 'les-novices',
+            'id': '3FPa7JMu21_6D4BA7b',
+            'display_id': '65931-baudouin-l-heritage-d-un-roi-baudouin-l-heritage-d-un-roi',
             'ext': 'mp4',
-            'title': 'Les novices',
-            'description': 'md5:2e7c33ba3ad48dabfcc2a956b88bde2b',
-            'upload_date': '20230821',
-            'thumbnail': 'https://revoir.tv5monde.com/uploads/media/video_thumbnail/0738/60/01e952b7ccf36b7c6007ec9131588954ab651de9.jpeg',
-            'duration': 5177,
-            'episode': 'Les novices',
+            'title': "Baudouin, l'héritage d'un roi",
+            'thumbnail': 'https://psi.tv5monde.com/upsilon-images/960x540/6f/baudouin-f49c6b0e.jpg',
+            'duration': 4842,
+            'upload_date': '20240130',
+            'episode': "Baudouin, l'héritage d'un roi",
+            'description': 'md5:78125c74a5cac06d7743a2d09126edad',
         },
     }, {
         # series episode
-        'url': 'https://revoir.tv5monde.com/toutes-les-videos/series-fictions/opj-les-dents-de-la-terre-2',
+        'url': 'https://www.tv5monde.com/tv/video/52952-toute-la-vie-mardi-23-mars-2021',
+        'md5': 'f5e09637cadd55639c05874e22eb56bf',
         'info_dict': {
-            'id': 'wJ0eeEPozr_6D4BA7b',
-            'display_id': 'opj-les-dents-de-la-terre-2',
+            'id': 'obRRZ8m6g9_6D4BA7b',
+            'display_id': '52952-toute-la-vie-mardi-23-mars-2021',
             'ext': 'mp4',
-            'title': "OPJ - Les dents de la Terre (2)",
-            'description': 'md5:288f87fd68d993f814e66e60e5302d9d',
-            'upload_date': '20230823',
-            'series': 'OPJ',
-            'episode': 'Les dents de la Terre (2)',
-            'duration': 2877,
-            'thumbnail': 'https://dl-revoir.tv5monde.com/images/1a/5753448.jpg'
+            'title': 'Toute la vie',
+            'description': 'md5:a824a2e1dfd94cf45fa379a1fb43ce65',
+            'thumbnail': 'https://psi.tv5monde.com/media/image/960px/5880553.jpg',
+            'duration': 2526,
+            'upload_date': '20240411',
+            'series': 'Toute la vie',
+            'episode': 'Mardi 23 mars 2021',
         },
     }, {
         # movie
-        'url': 'https://revoir.tv5monde.com/toutes-les-videos/cinema/ceux-qui-travaillent',
-        'md5': '32fa0cde16a4480d1251502a66856d5f',
+        'url': 'https://www.tv5monde.com/tv/video/8771-ce-fleuve-qui-nous-charrie-ce-fleuve-qui-nous-charrie-p001-ce-fleuve-qui-nous-charrie',
+        'md5': '87cefc34e10a6bf4f7823cccd7b36eb2',
         'info_dict': {
-            'id': 'dc57a011-ec4b-4648-2a9a-4f03f8352ed3',
-            'display_id': 'ceux-qui-travaillent',
+            'id': 'DOcfvdLKXL_6D4BA7b',
+            'display_id': '8771-ce-fleuve-qui-nous-charrie-ce-fleuve-qui-nous-charrie-p001-ce-fleuve-qui-nous-charrie',
             'ext': 'mp4',
-            'title': 'Ceux qui travaillent',
-            'description': 'md5:570e8bb688036ace873b2d50d24c026d',
-            'upload_date': '20210819',
+            'title': 'Ce fleuve qui nous charrie',
+            'description': 'md5:62ba3f875343c7fc4082bdfbbc1be992',
+            'thumbnail': 'https://psi.tv5monde.com/media/image/960px/5476617.jpg',
+            'duration': 5300,
+            'upload_date': '20240411',
+            'episode': 'Ce fleuve qui nous charrie',
         },
-        'skip': 'no longer available',
     }, {
-        # series episode
-        'url': 'https://revoir.tv5monde.com/toutes-les-videos/series-fictions/vestiaires-caro-actrice',
+        # news
+        'url': 'https://www.tv5monde.com/tv/video/68764-tv5monde-le-journal-edition-du-11-04-24-11h',
+        'md5': 'c62977d6d10754a2ecebba70ad370479',
         'info_dict': {
-            'id': '9e9d599e-23af-6915-843e-ecbf62e97925',
-            'display_id': 'vestiaires-caro-actrice',
+            'id': '0NU1lYMa0Q_6D4BA7b',
+            'display_id': '68764-tv5monde-le-journal-edition-du-11-04-24-11h',
             'ext': 'mp4',
-            'title': "Vestiaires - Caro actrice",
-            'description': 'md5:db15d2e1976641e08377f942778058ea',
-            'upload_date': '20210819',
-            'series': "Vestiaires",
-            'episode': 'Caro actrice',
+            'title': 'TV5MONDE, le journal',
+            'description': 'md5:777dc209eaa4423b678477c36b0b04a8',
+            'thumbnail': 'https://psi.tv5monde.com/media/image/960px/6183997.jpg',
+            'duration': 836,
+            'upload_date': '20240411',
+            'series': 'TV5MONDE, le journal',
+            'episode': 'TV5MONDE, le journal',
         },
-        'params': {
-            'skip_download': True,
-        },
-        'skip': 'no longer available',
-    }, {
-        'url': 'https://revoir.tv5monde.com/toutes-les-videos/series-fictions/neuf-jours-en-hiver-neuf-jours-en-hiver',
-        'only_matching': True,
-    }, {
-        'url': 'https://revoir.tv5monde.com/toutes-les-videos/info-societe/le-journal-de-la-rts-edition-du-30-01-20-19h30',
-        'only_matching': True,
     }]
     _GEO_BYPASS = False
 
@@ -98,7 +97,6 @@ class TV5MondePlusIE(InfoExtractor):
         if ">Ce programme n'est malheureusement pas disponible pour votre zone géographique.<" in webpage:
             self.raise_geo_restricted(countries=['FR'])
 
-        title = episode = self._html_search_regex(r'<h1>([^<]+)', webpage, 'title')
         vpl_data = extract_attributes(self._search_regex(
             r'(<[^>]+class="video_player_loader"[^>]+>)',
             webpage, 'video player loader'))
@@ -151,16 +149,13 @@ class TV5MondePlusIE(InfoExtractor):
         duration = (int_or_none(try_get(metadata, lambda x: x['content']['duration']))
                     or parse_duration(self._html_search_meta('duration', webpage)))
 
-        description = self._html_search_regex(
-            r'(?s)<div[^>]+class=["\']episode-texte[^>]+>(.+?)</div>', webpage,
-            'description', fatal=False)
+        title = episode = clean_html(get_element_by_class('main-title', webpage))
+        subtitle = clean_html(get_element_by_class('video-subtitle', webpage))
+        if subtitle:
+            episode = subtitle
 
-        series = self._html_search_regex(
-            r'<p[^>]+class=["\']episode-emission[^>]+>([^<]+)', webpage,
-            'series', default=None)
-
-        if series and series != title:
-            title = '%s - %s' % (series, title)
+        ep_summary = get_element_html_by_class('ep-summary', webpage)
+        description = clean_html(get_element_by_class('text', ep_summary))
 
         upload_date = self._search_regex(
             r'(?:date_publication|publish_date)["\']\s*:\s*["\'](\d{4}_\d{2}_\d{2})',
@@ -185,6 +180,6 @@ class TV5MondePlusIE(InfoExtractor):
             'formats': formats,
             'subtitles': self._extract_subtitles(self._parse_json(
                 traverse_obj(vpl_data, ('data-captions', {str}), default='{}'), display_id, fatal=False)),
-            'series': series,
+            'series': clean_html(get_element_by_class('video-title', webpage)),
             'episode': episode,
         }
